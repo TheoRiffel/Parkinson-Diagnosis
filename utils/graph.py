@@ -3,6 +3,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import networkx as nx
+import pandas as pd
 import torch
 import os
 
@@ -200,6 +201,59 @@ class OMSTBuilder:
         plt.legend()
         plt.show()
 
+def concatenate_graphs(
+        *graph_lists: list[nx.Graph],
+    ) -> list[nx.Graph]:
+    """
+    Concatenate two or more list[nx.Graph]
+    """
+
+    if not graph_lists:
+        raise ValueError("At least one list of networkx graphs must be provided for concatenation.")
+
+    all_graphs = []
+    for graph_list in graph_lists:
+        all_graphs.extend(graph_list)
+
+    return all_graphs
+
+def get_largest_connected_component(graphs):
+    largest_cc_graphs = []
+    for graph in graphs:
+        largest_cc = max(nx.connected_components(graph), key=len)
+        subgraph = graph.subgraph(largest_cc).copy()
+        subgraph.remove_edges_from(nx.selfloop_edges(subgraph))
+        largest_cc_graphs.append(subgraph)
+    return largest_cc_graphs
+
+def extract_network_features(graph: nx.Graph) -> dict:
+    """
+    Extract network features from a graph
+    """
+    graph_copy = graph.copy()
+    largest_cc = max(nx.connected_components(graph_copy), key=len)
+    subgraph = graph.subgraph(largest_cc).copy()
+    subgraph.remove_edges_from(nx.selfloop_edges(subgraph))
+    
+    features = {}
+    features['num_nodes'] = subgraph.number_of_nodes()
+    features['num_edges'] = subgraph.number_of_edges()
+    features['density'] = nx.density(subgraph)
+    features['avg_clustering'] = nx.average_clustering(subgraph)
+    features['transitivity'] = nx.transitivity(subgraph)
+    features['avg_shortest_path_length'] = nx.average_shortest_path_length(subgraph)
+    features['diameter'] = nx.diameter(subgraph)
+    features['radius'] = nx.radius(subgraph)
+    features['assortativity'] = nx.degree_assortativity_coefficient(subgraph)
+    features['global_efficiency'] = nx.global_efficiency(subgraph)
+    features['local_efficiency'] = nx.local_efficiency(subgraph)
+    features['mean_degree'] = np.mean(np.array(list(dict(subgraph.degree()).values())))
+    features['closeness_centrality'] = np.mean(list(nx.closeness_centrality(subgraph).values()))
+    features['betweenness_centrality'] = np.mean(list(nx.betweenness_centrality(subgraph).values()))
+    features['eigenvector_centrality'] = np.mean(list(nx.eigenvector_centrality_numpy(subgraph).values())) 
+    features['modularity'] = nx.algorithms.community.modularity(subgraph, nx.community.greedy_modularity_communities(subgraph))
+    
+    return features
 
 def load_graphs(path: str) -> list[nx.Graph]:
     """
